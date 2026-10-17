@@ -15,8 +15,9 @@ const SPEED := 200.0
 var health := 3
 
 func _ready() -> void:
+	# HurtBox（Area2D）负责检测与敌人的接触：
 	# 只有「开始接触」时触发一次，持续贴住不会重复扣血
-	body_entered.connect(_on_body_entered)
+	$HurtBox.body_entered.connect(_on_body_entered)
 
 func _physics_process(_delta: float) -> void:
 	# Input.get_vector 返回归一化方向向量：
