@@ -12,11 +12,11 @@ extends CharacterBody2D
 ## 正常移动速度（像素/秒）
 const SPEED := 200.0
 ## 碰到敌人后短暂提升到的速度
-const BOOST_SPEED := 250.0
+const BOOST_SPEED := 4000
 ## 渐增阶段时长（秒）：200 → 250
-const BOOST_UP_DURATION := 1.0
+const BOOST_UP_DURATION := 0.1
 ## 快速下降阶段时长（秒）：250 → 200
-const BOOST_DOWN_DURATION := 0.3
+const BOOST_DOWN_DURATION := 20
 ## 玩家生命值（初始 3）
 var health := 3
 ## 当前移动速度
@@ -29,6 +29,8 @@ func _ready() -> void:
 	# HurtBox（Area2D）负责检测与敌人的接触：
 	# 只有「开始接触」时触发一次，持续贴住不会重复扣血
 	$HurtBox.body_entered.connect(_on_body_entered)
+	# 游戏开始时显示初始生命值
+	print("玩家生命值：", health, "/3")
 
 func _physics_process(delta: float) -> void:
 	_update_speed(delta)
