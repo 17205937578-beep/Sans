@@ -11,14 +11,19 @@ extends CharacterBody2D
 
 ## 正常移动速度（像素/秒）
 const SPEED := 200.0
-## 碰到敌人后的减速速度
-const SLOW_SPEED := 100.0
-## 每秒恢复多少速度（像素/秒）
-const SPEED_RECOVER_RATE := 30.0
+## 碰到敌人后短暂提升到的速度
+const BOOST_SPEED := 250.0
+## 渐增阶段时长（秒）：200 → 250
+const BOOST_UP_DURATION := 1.0
+## 快速下降阶段时长（秒）：250 → 200
+const BOOST_DOWN_DURATION := 0.3
 ## 玩家生命值（初始 3）
 var health := 3
-## 当前移动速度（会随减速/恢复变化）
+## 当前移动速度
 var _current_speed := SPEED
+## 速度状态："" 正常 / "up" 渐增中 / "down" 下降中
+var _boost_state := ""
+var _boost_timer := 0.0
 
 func _ready() -> void:
 	# HurtBox（Area2D）负责检测与敌人的接触：
@@ -26,9 +31,7 @@ func _ready() -> void:
 	$HurtBox.body_entered.connect(_on_body_entered)
 
 func _physics_process(delta: float) -> void:
-	# 减速后缓慢恢复到正常速度
-	if _current_speed < SPEED:
-		_current_speed = minf(_current_speed + SPEED_RECOVER_RATE * delta, SPEED)
+	_update_speed(delta)
 	# Input.get_vector 返回归一化方向向量：
 	# - 单方向长度为 1（例如只按右键 -> (1, 0)）
 	# - 斜向（如右上）长度仍为 1，不会更快
@@ -37,11 +40,33 @@ func _physics_process(delta: float) -> void:
 	velocity = direction * _current_speed
 	move_and_slide()
 
+func _update_speed(delta: float) -> void:
+	# 碰到敌人后的速度曲线：
+	# 0~1 秒：从 200 渐增到 250
+	# 1~1.3 秒：从 250 快速降回 200
+	# 之后恢复正常
+	if _boost_state == "up":
+		_boost_timer -= delta
+		var progress := 1.0 - _boost_timer / BOOST_UP_DURATION
+		_current_speed = lerpf(SPEED, BOOST_SPEED, progress)
+		if _boost_timer <= 0.0:
+			_boost_state = "down"
+			_boost_timer = BOOST_DOWN_DURATION
+	elif _boost_state == "down":
+		_boost_timer -= delta
+		var progress := 1.0 - _boost_timer / BOOST_DOWN_DURATION
+		_current_speed = lerpf(BOOST_SPEED, SPEED, progress)
+		if _boost_timer <= 0.0:
+			_boost_state = ""
+			_current_speed = SPEED
+
 func _on_body_entered(body: Node) -> void:
 	if body.is_in_group("enemy"):
-		# 碰到敌人：立刻减速，之后缓慢恢复
-		_current_speed = SLOW_SPEED
-		print("玩家减速：", _current_speed, "/", SPEED)
+		# 只在正常状态触发一次，避免效果叠加
+		if _boost_state == "":
+			_boost_state = "up"
+			_boost_timer = BOOST_UP_DURATION
+			print("玩家加速：200 -> 250")
 		if health > 0:
 			health -= 1
 			print("玩家生命值：", health, "/3")
