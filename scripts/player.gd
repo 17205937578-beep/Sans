@@ -9,28 +9,41 @@ extends CharacterBody2D
 ##   - body_entered 只在接触开始时触发一次，不会瞬间掉光
 ##   - 分开后再次接触会继续扣血
 
-## 移动速度（像素/秒）
+## 正常移动速度（像素/秒）
 const SPEED := 200.0
+## 碰到敌人后的减速速度
+const SLOW_SPEED := 100.0
+## 每秒恢复多少速度（像素/秒）
+const SPEED_RECOVER_RATE := 30.0
 ## 玩家生命值（初始 3）
 var health := 3
+## 当前移动速度（会随减速/恢复变化）
+var _current_speed := SPEED
 
 func _ready() -> void:
 	# HurtBox（Area2D）负责检测与敌人的接触：
 	# 只有「开始接触」时触发一次，持续贴住不会重复扣血
 	$HurtBox.body_entered.connect(_on_body_entered)
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	# 减速后缓慢恢复到正常速度
+	if _current_speed < SPEED:
+		_current_speed = minf(_current_speed + SPEED_RECOVER_RATE * delta, SPEED)
 	# Input.get_vector 返回归一化方向向量：
 	# - 单方向长度为 1（例如只按右键 -> (1, 0)）
 	# - 斜向（如右上）长度仍为 1，不会更快
 	# - 松开所有按键 -> (0, 0)，玩家即停止
 	var direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	velocity = direction * SPEED
+	velocity = direction * _current_speed
 	move_and_slide()
 
 func _on_body_entered(body: Node) -> void:
-	if body.is_in_group("enemy") and health > 0:
-		health -= 1
-		print("玩家生命值：", health, "/3")
-		if health == 0:
-			print("生命值归零")
+	if body.is_in_group("enemy"):
+		# 碰到敌人：立刻减速，之后缓慢恢复
+		_current_speed = SLOW_SPEED
+		print("玩家减速：", _current_speed, "/", SPEED)
+		if health > 0:
+			health -= 1
+			print("玩家生命值：", health, "/3")
+			if health == 0:
+				print("生命值归零")
