@@ -12,13 +12,15 @@ extends CharacterBody2D
 ## 正常移动速度（像素/秒）
 const SPEED := 200.0
 ## 碰到敌人后短暂提升到的速度
-const BOOST_SPEED := 4000
+const BOOST_SPEED := 400
 ## 渐增阶段时长（秒）：200 → 250
 const BOOST_UP_DURATION := 0.1
 ## 快速下降阶段时长（秒）：250 → 200
 const BOOST_DOWN_DURATION := 20
 ## 玩家生命值（初始 3）
 var health := 3
+## 生命值归零时发出（任务 #6）
+signal game_over
 ## 当前移动速度
 var _current_speed := SPEED
 ## 速度状态："" 正常 / "up" 渐增中 / "down" 下降中
@@ -33,6 +35,11 @@ func _ready() -> void:
 	print("玩家生命值：", health, "/3")
 
 func _physics_process(delta: float) -> void:
+	# 失败状态：玩家不能继续操作
+	if health <= 0:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		return
 	_update_speed(delta)
 	# Input.get_vector 返回归一化方向向量：
 	# - 单方向长度为 1（例如只按右键 -> (1, 0)）
@@ -74,3 +81,4 @@ func _on_body_entered(body: Node) -> void:
 			print("玩家生命值：", health, "/3")
 			if health == 0:
 				print("生命值归零")
+				game_over.emit()
